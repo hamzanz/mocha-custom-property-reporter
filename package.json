@@ -1,0 +1,30 @@
+{
+  "name": "mocha-custom-property-reporter",
+  "version": "1.0.0",
+  "description": "A mocha reporter that supports adding custom properties to mocha tests.",
+  "main": "./lib/cjs/index.js",
+  "module": "./lib/esm/index.js",
+  "files": [
+    "lib"
+  ],
+  "scripts": {
+    "tsc": "tsc -p tsconfig-esm.json && tsc -p tsconfig-cjs.json",
+    "prepublishOnly": "npm run tsc"
+  },
+  "keywords": [],
+  "author": "Hamza Nazeer",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/mocha": "^10.0.3",
+    "@types/node": "^20.8.10",
+    "chai": "^4.3.10",
+    "typescript": "^5.2.2"
+  },
+  "dependencies": {
+    "mocha": "^10.2.0"
+  },
+  "types": "./lib/cjs/index.d.ts",
+  "directories": {
+    "lib": "lib"
+  }
+}
