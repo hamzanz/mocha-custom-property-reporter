@@ -1,18 +1,13 @@
 import {MochaOptions, Runner, Test, reporters} from "mocha";
 import path from "path";
 import * as fs from "fs";
-import {MochaPropertyReporterOptions, TestWithProperties} from "./types";
+import {MochaPropertyReporterOptions} from "./types";
 
 const Base = reporters.Base;
 const {
-    EVENT_RUN_BEGIN,
     EVENT_RUN_END,
-    EVENT_TEST_FAIL,
-    EVENT_TEST_PASS,
     EVENT_SUITE_BEGIN,
-    EVENT_SUITE_END,
     EVENT_TEST_END,
-    EVENT_TEST_PENDING
 } = Runner.constants;
 
 
@@ -26,43 +21,31 @@ export function MochaPropertyReporter(runner: Runner, options: MochaOptions) {
 
     Base.call(<reporters.Base>this, runner, options);
     const self = this;
-    const tests: Test[] = [];
-    const pending: Test[] = [];
-    const failures: Test[] = [];
-    const passes: Test[] = [];
-    let counter = 1;
+    const testSuites: Map<string, Test[]> = new Map();
 
     const customReportOptions = getCustomReportOptions(options);
     const output: string = path.resolve(customReportOptions?.output ?? 'mocha-property-report.json');
     const defaultProperties = customReportOptions?.properties ?? {};
 
     runner.on(EVENT_TEST_END, function (test) {
-        tests.push(test);
+        let suiteName = 'root';
+        if(test.parent?.title && test.parent?.title.length > 0) {
+            suiteName = test.parent?.title ?? 'root';
+        }
+        testSuites.get(suiteName)?.push(test);
     });
 
-    runner.on(EVENT_TEST_PASS, function (test) {
-        passes.push(test);
-    });
-
-    runner.on(EVENT_TEST_FAIL, function (test: any) {
-        console.log('Test Fail');
-        console.log(counter++);
-        failures.push(test);
-    });
-
-    runner.on(EVENT_TEST_PENDING, function (test) {
-        pending.push(test);
+    runner.on(EVENT_SUITE_BEGIN, function (suite) {
+        const suiteName = suite.root ? 'root' : suite.title;
+        if(!testSuites.has(suiteName)) {
+            testSuites.set(suiteName, []);
+        }
     });
 
     runner.on(EVENT_RUN_END, function () {
-        console.log('Test Run End');
-
         const obj = {
             stats: self.stats,
-            tests: tests.map(clean),
-            pending: pending.map(clean),
-            failures: failures.map(clean),
-            passes: passes.map(clean),
+            suites: getTestSuites(testSuites),
             defaultProperties
         };
 
@@ -85,6 +68,21 @@ export function MochaPropertyReporter(runner: Runner, options: MochaOptions) {
     });
 }
 
+function getTestSuites(testSuitesMap: Map<string, Test[]>) {
+    const suites = [];
+    for (const [suiteName, tests] of testSuitesMap) {
+        if(tests.length === 0) continue;
+
+        const suite = {
+            name: suiteName,
+            cases: tests.map(clean)
+        };
+        suites.push(suite);
+    }
+
+    return suites;
+}
+
 function write(str: string) {
     process.stdout.write(str);
 }
@@ -99,7 +97,6 @@ function getCustomReportOptions(options: MochaOptions): MochaPropertyReporterOpt
     }
 
     const customOptionsFilepath = path.resolve(customOptionsFilename);
-    console.log(customOptionsFilepath);
 
     try {
         customOptions = JSON.parse(fs.readFileSync(customOptionsFilepath).toString())
@@ -109,7 +106,6 @@ function getCustomReportOptions(options: MochaOptions): MochaPropertyReporterOpt
         throw e;
     }
 
-    console.log(customOptions);
     return customOptions as MochaPropertyReporterOptions;
 }
 
@@ -146,7 +142,6 @@ function clean(test: any) {
  * @return {Object}
  */
 function cleanCycles(obj: any) {
-    console.log('Error clean cycle');
     const cache: any[] = [];
     return JSON.parse(
         JSON.stringify(obj, function (key, value) {
@@ -171,7 +166,6 @@ function cleanCycles(obj: any) {
  * @return {Object}
  */
 function errorJSON(err: any) {
-    console.log('Error json');
     const res: Record<string, any> = {};
     Object.getOwnPropertyNames(err).forEach(function (key) {
         if(key.toLowerCase() !== 'multiple') {
