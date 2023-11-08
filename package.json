@@ -1,6 +1,6 @@
 {
   "name": "mocha-custom-property-reporter",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A mocha reporter that supports adding custom properties to mocha tests.",
   "main": "./lib/cjs/index.js",
   "module": "./lib/esm/index.js",
